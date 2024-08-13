@@ -645,7 +645,7 @@ def create_destination_file(source_path, start_time):
     return destination_path
 
 # Streamlit app
-st.title('GIH')
+st.title('Curating GIH')
 
 uploaded_file = st.file_uploader("Choose a source file", type=["xlsx"])
 
