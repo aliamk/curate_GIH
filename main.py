@@ -589,6 +589,128 @@ country_to_ida_status = {
     "Zimbabwe": "Blended"
 }
 
+# PPI Mapping from PDF
+ppi_mapping = {
+    "Biofuels/Biomass Energy": ("Electricity", "Electricity generation", "Electricity generation"),
+    "Energy Storage": ("Electricity", "Energy Storage", "Energy Storage"),
+    "EV Charging": ("Transport", "E-Vehicle Charging Station", "E-Vehicle Charging Station"),
+    "Geothermal Energy": ("Electricity", "Electricity generation", "Electricity generation"),
+    "Hydro Energy": ("Electricity", "Electricity generation", "Electricity generation"),
+    "Hydrogen Energy": ("Electricity", "Electricity generation", "Electricity generation"),
+    "Marine Energy": ("Electricity", "Electricity generation", "Electricity generation"),
+    "Solar (Floating PV)": ("Electricity", "Electricity generation", "Electricity generation"),
+    "Solar (Land-Based PV)": ("Electricity", "Electricity generation", "Electricity generation"),
+    "Solar (Thermal)": ("Electricity", "Electricity generation", "Electricity generation"),
+    "Waste to Energy": ("Electricity", "Electricity generation", "Electricity generation"),
+    "Wind (Offshore)": ("Electricity", "Electricity generation", "Electricity generation"),
+    "Wind (Onshore)": ("Electricity", "Electricity generation", "Electricity generation"),
+    "Carbon Capture & Storage": ("Electricity", "Other", "Electricity generation"),
+    "Coal-Fired Power": ("Electricity", "Electricity generation", "Electricity generation"),
+    "Cogeneration Power": ("Electricity", "Electricity generation", "Electricity generation"),
+    "Gas-Fired Power": ("Electricity", "Electricity generation", "Electricity generation"),
+    "Nuclear Power": ("Electricity", "Electricity generation", "Electricity generation"),
+    "Oil-Fired Power": ("Electricity", "Electricity generation", "Electricity generation"),
+    "Transmission": ("Electricity", "Electricity transmission", "Electricity transmission"),
+    "Downstream Oil & Gas": ("Downstream", "-", "-"),
+    "LNG": ("LNG", "-", "-"),
+    "Midstream Oil & Gas": ("Midstream", "-", "-"),
+    "Petrochemical": ("Petrochemical", "-", "-"),
+    "Upstream Oil & Gas": ("Upstream", "-", "-"),
+    "Airport": ("Transport", "Airports Terminal", "Terminal"),
+    "Bridge": ("Transport", "Roads", "Bridge"),
+    "Car Park": ("Transport", "Roads", "Other"),
+    "Heavy Rail": ("Transport", "Railways", "Freight"),
+    "Light Transport": ("Transport", "Railways", "-"),
+    "Port": ("Transport", "Ports", "Terminal"),
+    "Road": ("Transport", "Roads", "Highway"),
+    "Rolling Stock": ("Transport", "Railways", "Other"),
+    "Service Station": ("Transport", "Roads", "Other"),
+    "Tunnel": ("Transport", "Roads", "Tunnel"),
+    "Defence": ("Social Infrastructure", "Defence", "-"),
+    "Education": ("Social Infrastructure", "Education", "-"),
+    "Government Accommodation": ("Social Infrastructure", "Government Accommodation", "-"),
+    "Healthcare": ("Social Infrastructure", "Healthcare", "-"),
+    "Heat Network": ("Social Infrastructure", "Heat Network", "-"),
+    "Justice": ("Social Infrastructure", "Justice", "-"),
+    "Municipal Building": ("Social Infrastructure", "Municipal Building", "-"),
+    "Senior Home": ("Social Infrastructure", "Senior Home", "-"),
+    "Social Housing": ("Social Infrastructure", "Social Housing", "-"),
+    "Student Accommodation": ("Social Infrastructure", "Student Accommodation", "-"),
+    "Data Centre": ("Information and communication technology (ICT)", "Data Center", "Not Available"),
+    "Internet": ("Information and communication technology (ICT)", "ICT backbone", "Not Available"),
+    "Satellite": ("Information and communication technology (ICT)", "ICT backbone", "Other"),
+    "Tower": ("Information and communication technology (ICT)", "ICT backbone", "Other"),
+    "Desalination": ("Water and sewerage", "Treatment Plant", "Potable water treatment plant"),
+    "Water Distribution": ("Water and sewerage", "Water Utility", "Not Available"),
+    "Water Treatment": ("Water and sewerage", "Water Utility", "Water utility with sewerage"),
+    "Base Metals": ("Mining", "Base Metals", "-"),
+    "Coal Mining": ("Mining", "Coal", "-"),
+    "Metal Mining": ("Mining", "Metal", "-"),
+    "Mineral Mining": ("Mining", "Mineral", "-"),
+    "Precious Metals": ("Mining", "Precious Metals", "-"),
+    "Processing": ("Mining", "Processing", "-"),
+    # Add more mappings as necessary
+}
+
+# Split Mappings from PDF
+split_mapping = {
+    "Airport": ("Transport", "Airports", "Terminal"),
+    "Biofuels/Biomass": ("Energy", "Electricity", "Electricity generation"),
+    "Bridge": ("Transport", "Roads", "Bridge"),
+    "Car Park": ("Transport", "Roads", "Other"),
+    "Carbon Capture & Storage": ("Energy", "Electricity", "Other"),
+    "Coal-Fired Power": ("Energy", "Electricity", "Electricity generation"),
+    "Cogeneration Power": ("Energy", "Electricity", "Electricity generation"),
+    "Data Centre": ("Information and communication technology (ICT)", "Data Center", "Not Available"),
+    "Desalination": ("Water and sewerage", "Treatment Plant", "Potable water treatment plant"),
+    "Digital Infrastructure (General)": ("Information and communication technology (ICT)", "Digital Infrastructure", "Not Available"),
+    "Downstream Oil & Gas": ("Oil & Gas", "Downstream", "-"),
+    "Education": ("Social Infrastructure", "Education", "-"),
+    "Energy Storage": ("Energy", "Electricity", "Energy Storage"),
+    "Gas-Fired Power": ("Energy", "Electricity", "Electricity generation"),
+    "Geothermal": ("Energy", "Electricity", "Electricity generation"),
+    "Healthcare": ("Social Infrastructure", "Healthcare", "-"),
+    "Heat Network": ("Social Infrastructure", "Heat Network", "-"),
+    "Heavy Rail": ("Transport", "Railways", "Freight"),
+    "Hydro": ("Energy", "Electricity", "Electricity generation"),
+    "Hydrogen": ("Energy", "Electricity", "Electricity generation"),
+    "Internet": ("Information and communication technology (ICT)", "ICT backbone", "Not Available"),
+    "Justice": ("Social Infrastructure", "Justice", "-"),
+    "LNG": ("Oil & Gas", "LNG", "-"),
+    "Marine": ("Energy", "Electricity", "Electricity generation"),
+    "Midstream Oil & Gas": ("Oil & Gas", "Midstream", "-"),
+    "Municipal Building": ("Social Infrastructure", "Municipal Building", "-"),
+    "Non-Renewable Energy (General)": ("Energy", "Non-Renewable", "-"),
+    "Nuclear Power": ("Energy", "Electricity", "Electricity generation"),
+    "Oil & Gas (General)": ("Oil & Gas", "General", "-"),
+    "Oil-Fired Power": ("Energy", "Electricity", "Electricity generation"),
+    "Petrochemical": ("Oil & Gas", "Petrochemical", "-"),
+    "Port": ("Transport", "Ports", "Terminal"),
+    "Renewable Energy (General)": ("Energy", "Renewable", "-"),
+    "Road": ("Transport", "Roads", "Highway"),
+    "Satellite": ("Information and communication technology (ICT)", "ICT backbone", "Other"),
+    "Social Housing": ("Social Infrastructure", "Social Housing", "-"),
+    "Social Infrastructure (General)": ("Social Infrastructure", "General", "-"),
+    "Solar (Floating PV)": ("Energy", "Electricity", "Electricity generation"),
+    "Solar (Land-Based PV)": ("Energy", "Electricity", "Electricity generation"),
+    "Solar (Thermal)": ("Energy", "Electricity", "Electricity generation"),
+    "Tower": ("Information and communication technology (ICT)", "ICT backbone", "Other"),
+    "Transmission": ("Energy", "Electricity", "Electricity transmission"),
+    "Transport (General)": ("Transport", "General", "-"),
+    "Tunnel": ("Transport", "Roads", "Tunnel"),
+    "Unallocated": ("Unallocated", "-", "-"),
+    "Upstream Oil & Gas": ("Oil & Gas", "Upstream", "-"),
+    "Waste (General)": ("Waste", "General", "-"),
+    "Waste to Energy": ("Energy", "Electricity", "Electricity generation"),
+    "Water (General)": ("Water", "General", "-"),
+    "Water Distribution": ("Water and sewerage", "Water Utility", "Not Available"),
+    "Water Treatment": ("Water and sewerage", "Water Utility", "Water utility with sewerage"),
+    "Waterway": ("Transport", "Waterway", "-"),
+    "Wind (Offshore)": ("Energy", "Electricity", "Electricity generation"),
+    "Wind (Onshore)": ("Energy", "Electricity", "Electricity generation"),
+    "Zero Emissions Vehicles (ZEV) Infrastructure": ("Transport", "E-Vehicle Charging Station", "N/A"),
+}
+
 # Function to autofit columns in Excel sheets
 def autofit_columns(worksheet):
     for column in worksheet.columns:
@@ -603,6 +725,30 @@ def autofit_columns(worksheet):
         adjusted_width = max_length + 2
         worksheet.column_dimensions[column[0].column_letter].width = adjusted_width
 
+# Function to map and concatenate multiple values for PPI columns
+def map_and_concatenate_values(subsector_string, column_index):
+    subsectors = subsector_string.split('; ')
+    mapped_values = [ppi_mapping.get(subsector, ("", "", ""))[column_index] for subsector in subsectors]
+    unique_mapped_values = list(set(mapped_values))  # Remove duplicates
+    return "; ".join(filter(None, unique_mapped_values))
+
+# Function to apply split mappings
+def apply_split_mappings(subsector_string):
+    if pd.isnull(subsector_string):
+        return None, None, None
+    subsectors = subsector_string.split('; ')
+    sectors, subsectors_ppi, segments = [], [], []
+    for subsector in subsectors:
+        sector, subsector_ppi, segment = split_mapping.get(subsector, ("", "", ""))
+        sectors.append(sector)
+        subsectors_ppi.append(subsector_ppi)
+        segments.append(segment)
+    return (
+        "; ".join(filter(None, sectors)),
+        "; ".join(filter(None, subsectors_ppi)),
+        "; ".join(filter(None, segments)),
+    )
+
 # Function to process the uploaded file and generate the output file
 def create_destination_file(source_path, start_time):
     # Load the Excel file into a Pandas ExcelFile object
@@ -610,34 +756,53 @@ def create_destination_file(source_path, start_time):
         # Initialize a dictionary to hold the data for each sheet
         sheet_data = {}
 
-        # List of sheets to modify
-        sheets_to_modify = [
-            'Transactions_Infrastructure_GIH', 
-            'Tranches', 
-            'Tranche_Participants'
-        ]
-
         # Loop through each sheet
         for sheet_name in xls.sheet_names:
-            try:
-                # Read the sheet into a DataFrame
-                df = pd.read_excel(xls, sheet_name=sheet_name)
+            # Read the sheet into a DataFrame
+            df = pd.read_excel(xls, sheet_name=sheet_name)
 
-                # Check if the sheet is one that needs modification
-                if sheet_name in sheets_to_modify:
-                    # Add the new columns after the last existing column
-                    df['Transaction Country (PPI)'] = df['Transaction Country'].map(country_to_ppi)
-                    df['Transaction Region (PPI)'] = df['Transaction Country'].map(country_to_region_ppi)
-                    df['IDA Status'] = df['Transaction Country (PPI)'].map(country_to_ida_status)
+            if sheet_name == 'Transactions_Infrastructure_GIH':
+                # Add new columns in the specified order
+                df['Transaction Country (PPI)'] = df['Transaction Country'].map(country_to_ppi)
+                df['Transaction Region (PPI)'] = df['Transaction Country'].map(country_to_region_ppi)
+                df['IDA Status'] = df['Transaction Country (PPI)'].map(country_to_ida_status)
 
-                # Save the modified DataFrame back to the dictionary
-                sheet_data[sheet_name] = df
+                tranches_df = pd.read_excel(xls, sheet_name='Tranches')
+                if not tranches_df['Realfin INFRA Transaction ID'].is_unique:
+                    tranches_df = tranches_df.drop_duplicates(subset='Realfin INFRA Transaction ID')
 
-                logging.info(f"Successfully processed sheet: {sheet_name}")
+                df['Transaction Subsector'] = df['Realfin INFRA Transaction ID'].map(
+                    tranches_df.set_index('Realfin INFRA Transaction ID')['Transaction Subsector']
+                )
 
-            except Exception as e:
-                logging.error(f"Failed to process sheet {sheet_name}: {e}")
-                st.error(f"An error occurred while processing sheet {sheet_name}: {e}")
+                df['Transaction Subsector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 1) if pd.notnull(x) else None)
+                df['Transaction Sector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 0) if pd.notnull(x) else None)
+                df['Transaction Segment (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 2) if pd.notnull(x) else None)
+
+            elif sheet_name == 'Tranches':
+                # Add new columns in the specified order
+                df['Transaction Country (PPI)'] = df['Transaction Country'].map(country_to_ppi)
+                df['Transaction Region (PPI)'] = df['Transaction Country'].map(country_to_region_ppi)
+                df['IDA Status'] = df['Transaction Country (PPI)'].map(country_to_ida_status)
+                
+                df['Transaction Subsector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 1) if pd.notnull(x) else None)
+                df['Transaction Sector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 0) if pd.notnull(x) else None)
+                df['Transaction Segment (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 2) if pd.notnull(x) else None)
+
+                df['Transaction Sector (PPI) Split'], df['Transaction Subsector (PPI) Split'], df['Transaction Segment (PPI) Split'] = zip(*df['Transaction Subsector'].map(apply_split_mappings))
+
+            elif sheet_name == 'Tranche_Participants':
+                # Add new columns in the specified order
+                df['Transaction Country (PPI)'] = df['Transaction Country'].map(country_to_ppi)
+                df['Transaction Region (PPI)'] = df['Transaction Country'].map(country_to_region_ppi)
+                df['IDA Status'] = df['Transaction Country (PPI)'].map(country_to_ida_status)
+
+                df['Transaction Subsector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 1) if pd.notnull(x) else None)
+                df['Transaction Sector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 0) if pd.notnull(x) else None)
+                df['Transaction Segment (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 2) if pd.notnull(x) else None)
+
+            # Save the modified or unmodified DataFrame back to the dictionary
+            sheet_data[sheet_name] = df
 
     # Get the current time in London, UK timezone
     london_tz = pytz.timezone('Europe/London')
@@ -647,29 +812,12 @@ def create_destination_file(source_path, start_time):
     destination_file_name = f"GIH{current_time}.xlsx"
     destination_path = os.path.join(tempfile.gettempdir(), destination_file_name)
 
-    # Write all the sheets back to a new Excel file and create the empty "Info" sheet
+    # Write all the sheets back to a new Excel file and autofit columns
     with pd.ExcelWriter(destination_path, engine='openpyxl') as writer:
         for sheet_name, df in sheet_data.items():
-            try:
-                df.to_excel(writer, sheet_name=sheet_name, index=False)
-                worksheet = writer.sheets[sheet_name]
-                autofit_columns(worksheet)  # Autofit columns for each sheet
-
-                logging.info(f"Successfully wrote sheet: {sheet_name} to file")
-
-            except Exception as e:
-                logging.error(f"Failed to write sheet {sheet_name} to file: {e}")
-                st.error(f"An error occurred while writing sheet {sheet_name} to file: {e}")
-
-        # Add an empty "Info" tab
-        try:
-            empty_df = pd.DataFrame()  # Create an empty DataFrame
-            empty_df.to_excel(writer, sheet_name='Info', index=False)
-            logging.info("Successfully added empty 'Info' sheet")
-
-        except Exception as e:
-            logging.error(f"Failed to add 'Info' sheet: {e}")
-            st.error(f"An error occurred while adding 'Info' sheet: {e}")
+            df.to_excel(writer, sheet_name=sheet_name, index=False)
+            worksheet = writer.sheets[sheet_name]
+            autofit_columns(worksheet)  # Autofit columns for each sheet
 
     return destination_path
 
