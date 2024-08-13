@@ -635,12 +635,16 @@ def create_destination_file(source_path, start_time):
     destination_file_name = f"GIH{current_time}.xlsx"
     destination_path = os.path.join(tempfile.gettempdir(), destination_file_name)
 
-    # Write all the sheets back to a new Excel file and autofit columns
+    # Write all the sheets back to a new Excel file and create the empty "Info" sheet
     with pd.ExcelWriter(destination_path, engine='openpyxl') as writer:
         for sheet_name, df in sheet_data.items():
             df.to_excel(writer, sheet_name=sheet_name, index=False)
             worksheet = writer.sheets[sheet_name]
             autofit_columns(worksheet)  # Autofit columns for each sheet
+
+        # Add an empty "Info" tab
+        empty_df = pd.DataFrame()  # Create an empty DataFrame
+        empty_df.to_excel(writer, sheet_name='Info', index=False)
 
     return destination_path
 
