@@ -6,6 +6,11 @@ import pandas as pd
 from datetime import datetime
 import pytz
 import openpyxl
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+
 
 # Country and Region mappings
 country_to_ppi = {
@@ -614,18 +619,25 @@ def create_destination_file(source_path, start_time):
 
         # Loop through each sheet
         for sheet_name in xls.sheet_names:
-            # Read the sheet into a DataFrame
-            df = pd.read_excel(xls, sheet_name=sheet_name)
+            try:
+                # Read the sheet into a DataFrame
+                df = pd.read_excel(xls, sheet_name=sheet_name)
 
-            # Check if the sheet is one that needs modification
-            if sheet_name in sheets_to_modify:
-                # Add the new columns after the last existing column
-                df['Transaction Country (PPI)'] = df['Transaction Country'].map(country_to_ppi)
-                df['Transaction Region (PPI)'] = df['Transaction Country'].map(country_to_region_ppi)
-                df['IDA Status'] = df['Transaction Country (PPI)'].map(country_to_ida_status)
+                # Check if the sheet is one that needs modification
+                if sheet_name in sheets_to_modify:
+                    # Add the new columns after the last existing column
+                    df['Transaction Country (PPI)'] = df['Transaction Country'].map(country_to_ppi)
+                    df['Transaction Region (PPI)'] = df['Transaction Country'].map(country_to_region_ppi)
+                    df['IDA Status'] = df['Transaction Country (PPI)'].map(country_to_ida_status)
 
-            # Save the modified DataFrame back to the dictionary
-            sheet_data[sheet_name] = df
+                # Save the modified DataFrame back to the dictionary
+                sheet_data[sheet_name] = df
+
+                logging.info(f"Successfully processed sheet: {sheet_name}")
+
+            except Exception as e:
+                logging.error(f"Failed to process sheet {sheet_name}: {e}")
+                st.error(f"An error occurred while processing sheet {sheet_name}: {e}")
 
     # Get the current time in London, UK timezone
     london_tz = pytz.timezone('Europe/London')
@@ -638,13 +650,26 @@ def create_destination_file(source_path, start_time):
     # Write all the sheets back to a new Excel file and create the empty "Info" sheet
     with pd.ExcelWriter(destination_path, engine='openpyxl') as writer:
         for sheet_name, df in sheet_data.items():
-            df.to_excel(writer, sheet_name=sheet_name, index=False)
-            worksheet = writer.sheets[sheet_name]
-            autofit_columns(worksheet)  # Autofit columns for each sheet
+            try:
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+                worksheet = writer.sheets[sheet_name]
+                autofit_columns(worksheet)  # Autofit columns for each sheet
+
+                logging.info(f"Successfully wrote sheet: {sheet_name} to file")
+
+            except Exception as e:
+                logging.error(f"Failed to write sheet {sheet_name} to file: {e}")
+                st.error(f"An error occurred while writing sheet {sheet_name} to file: {e}")
 
         # Add an empty "Info" tab
-        empty_df = pd.DataFrame()  # Create an empty DataFrame
-        empty_df.to_excel(writer, sheet_name='Info', index=False)
+        try:
+            empty_df = pd.DataFrame()  # Create an empty DataFrame
+            empty_df.to_excel(writer, sheet_name='Info', index=False)
+            logging.info("Successfully added empty 'Info' sheet")
+
+        except Exception as e:
+            logging.error(f"Failed to add 'Info' sheet: {e}")
+            st.error(f"An error occurred while adding 'Info' sheet: {e}")
 
     return destination_path
 
