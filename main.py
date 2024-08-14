@@ -822,17 +822,20 @@ def create_destination_file(source_path, start_time):
             df['Transaction Region (PPI)'] = df['Transaction Country'].map(country_to_region_ppi)
             df['IDA Status'] = df['Transaction Country'].map(country_to_ida_status)
 
-            # Handle the 'Transaction Subsector' mapping using the 'Tranches' sheet
+            # Handle the 'Transaction Subsector' and 'Transaction Sector' mapping using the 'Tranches' sheet
             tranches_df = sheet_data['Tranches']
             if not tranches_df['Realfin INFRA Transaction ID'].is_unique:
                 tranches_df = tranches_df.drop_duplicates(subset='Realfin INFRA Transaction ID')
 
+            # Correctly populate the 'Transaction Sector' column
+            df['Transaction Sector'] = df['Realfin INFRA Transaction ID'].map(
+                tranches_df.set_index('Realfin INFRA Transaction ID')['Transaction Sector']
+            )
+
+            # Also map 'Transaction Subsector' from 'Tranches' sheet
             df['Transaction Subsector'] = df['Realfin INFRA Transaction ID'].map(
                 tranches_df.set_index('Realfin INFRA Transaction ID')['Transaction Subsector']
             )
-
-            # Create 'Transaction Sector' column (assuming it's derived from 'Transaction Subsector')
-            df['Transaction Sector'] = df['Transaction Subsector'].apply(lambda x: "Mapped Sector" if pd.notnull(x) else None)
 
             # Map and concatenate PPI values
             df['Transaction Sector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 0) if pd.notnull(x) else None)
@@ -1000,8 +1003,6 @@ def create_destination_file(source_path, start_time):
             autofit_columns(worksheet)  # Autofit columns for each sheet
 
     return destination_path
-
-
 
 
 # Streamlit app
