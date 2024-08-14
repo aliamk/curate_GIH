@@ -4,6 +4,3 @@ xlsxwriter
 streamlit
 pytz
 numpy
-
-The app needs to populate 'Commercial Bank Debt (USD m)' column of the 'Transactions_Infrastructure_GIH' sheet with data.
-This data comes from the 'Tranche_Participants' sheet.
