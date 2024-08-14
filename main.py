@@ -7,6 +7,7 @@ from datetime import datetime
 import pytz
 import openpyxl
 import logging
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -757,52 +758,167 @@ def apply_split_mappings(subsector_string):
         "; ".join(segments),
     )
 
+# Function to determine 'Type of PPI' based on 'Transaction Type'
+def determine_type_of_ppi(df):
+    conditions = [
+        (r'(Acquisition|Asset Acquisition|Corporate Acquisition|Refinancing|Securitisation)', 'Secondary'),
+        (r'Privatisation', 'Divestiture'),
+        (r'(brownfield|modernization|modernisation|expansion|expand|upgrade|upgrading|refurbishment|refurb|rehabilitation|reconstruction|renewal|renew|improvement|extension|renovation|replacement|revamping|revamp|redevelopment|enhancement|revitalization|rebuilding|restoration|refreshment|enhancing|enhancement|repair|renewal)', 'Brownfield'),
+        (r'(Design-Build|Portfolio Financing|Primary Financing)', 'Greenfield')
+    ]
+
+    for index, row in df.iterrows():
+        transaction_type = str(row['Transaction Type'])  # Convert to string to avoid NoneType errors
+
+        # Check each condition in the specified order
+        for pattern, ppi_type in conditions[:-1]:
+            if re.search(pattern, transaction_type, re.IGNORECASE):
+                df.at[index, 'Type of PPI'] = ppi_type
+                break
+
+        # Apply the final condition only if 'Type of PPI' is still empty
+        if pd.isnull(row['Type of PPI']):
+            if re.search(conditions[-1][0], transaction_type, re.IGNORECASE):
+                df.at[index, 'Type of PPI'] = conditions[-1][1]
+
+
+
 # Function to process the uploaded file and generate the output file
 def create_destination_file(source_path, start_time):
     with pd.ExcelFile(source_path) as xls:
         sheet_data = {}
 
+        # Load all sheets into dataframes
         for sheet_name in xls.sheet_names:
             df = pd.read_excel(xls, sheet_name=sheet_name)
-
-            if sheet_name == 'Transactions_Infrastructure_GIH':
-                df['Transaction Country (PPI)'] = df['Transaction Country'].map(country_to_ppi)
-                df['Transaction Region (PPI)'] = df['Transaction Country'].map(country_to_region_ppi)
-                df['IDA Status'] = df['Transaction Country'].map(country_to_ida_status)
-
-                tranches_df = pd.read_excel(xls, sheet_name='Tranches')
-                if not tranches_df['Realfin INFRA Transaction ID'].is_unique:
-                    tranches_df = tranches_df.drop_duplicates(subset='Realfin INFRA Transaction ID')
-
-                df['Transaction Subsector'] = df['Realfin INFRA Transaction ID'].map(
-                    tranches_df.set_index('Realfin INFRA Transaction ID')['Transaction Subsector']
-                )
-
-                df['Transaction Sector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 0) if pd.notnull(x) else None)
-                df['Transaction Subsector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 1) if pd.notnull(x) else None)                
-                df['Transaction Segment (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 2) if pd.notnull(x) else None)
-
-            elif sheet_name == 'Tranches':
-                df['Transaction Country (PPI)'] = df['Transaction Country'].map(country_to_ppi)
-                df['Transaction Region (PPI)'] = df['Transaction Country'].map(country_to_region_ppi)
-                df['IDA Status'] = df['Transaction Country (PPI)'].map(country_to_ida_status)
-                
-                df['Transaction Sector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 0) if pd.notnull(x) else None)
-                df['Transaction Subsector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 1) if pd.notnull(x) else None)
-                df['Transaction Segment (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 2) if pd.notnull(x) else None)
-
-                df['Transaction Sector (PPI) Split'], df['Transaction Subsector (PPI) Split'], df['Transaction Segment (PPI) Split'] = zip(*df['Transaction Subsector'].map(apply_split_mappings))
-
-            elif sheet_name == 'Tranche_Participants':
-                df['Transaction Country (PPI)'] = df['Transaction Country'].map(country_to_ppi)
-                df['Transaction Region (PPI)'] = df['Transaction Country'].map(country_to_region_ppi)
-                df['IDA Status'] = df['Transaction Country (PPI)'].map(country_to_ida_status)
-
-                df['Transaction Sector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 0) if pd.notnull(x) else None)
-                df['Transaction Subsector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 1) if pd.notnull(x) else None)
-                df['Transaction Segment (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 2) if pd.notnull(x) else None)
-
             sheet_data[sheet_name] = df
+
+        # Processing 'Transactions_Infrastructure_GIH' sheet
+        if 'Transactions_Infrastructure_GIH' in sheet_data:
+            df = sheet_data['Transactions_Infrastructure_GIH']
+
+            # Copy the original columns and their data first
+            original_columns = df.columns.tolist()
+
+            # Map the necessary columns
+            df['Transaction Country (PPI)'] = df['Transaction Country'].map(country_to_ppi)
+            df['Transaction Region (PPI)'] = df['Transaction Country'].map(country_to_region_ppi)
+            df['IDA Status'] = df['Transaction Country'].map(country_to_ida_status)
+
+            # Handle the 'Transaction Subsector' mapping using the 'Tranches' sheet
+            tranches_df = sheet_data['Tranches']
+            if not tranches_df['Realfin INFRA Transaction ID'].is_unique:
+                tranches_df = tranches_df.drop_duplicates(subset='Realfin INFRA Transaction ID')
+
+            df['Transaction Subsector'] = df['Realfin INFRA Transaction ID'].map(
+                tranches_df.set_index('Realfin INFRA Transaction ID')['Transaction Subsector']
+            )
+
+            # Create 'Transaction Sector' column (assuming it's derived from 'Transaction Subsector')
+            df['Transaction Sector'] = df['Transaction Subsector'].apply(lambda x: "Mapped Sector" if pd.notnull(x) else None)
+
+            # Map and concatenate PPI values
+            df['Transaction Sector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 0) if pd.notnull(x) else None)
+            df['Transaction Subsector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 1) if pd.notnull(x) else None)
+            df['Transaction Segment (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 2) if pd.notnull(x) else None)
+
+            # Populate 'Commercial Bank Debt (USD m)' from 'Tranche_Participants' sheet
+            if 'Tranche_Participants' in sheet_data:
+                tranche_participants_df = sheet_data['Tranche_Participants']
+                commercial_bank_debt = (
+                    tranche_participants_df[tranche_participants_df['Participant Company Type'] == 'Commercial Bank']
+                    .groupby('Realfin INFRA Transaction ID')['Participant Tranche Underwriting (USD m)']
+                    .sum()
+                )
+                df['Commercial Bank Debt (USD m)'] = df['Realfin INFRA Transaction ID'].map(commercial_bank_debt)
+
+            # Specify the new columns to be added after the original columns
+            new_columns = {
+                'Transaction Country (PPI)': df['Transaction Country (PPI)'],
+                'Transaction Region (PPI)': df['Transaction Region (PPI)'],
+                'IDA Status': df['IDA Status'],
+                'Transaction Sector': df['Transaction Sector'],
+                'Transaction Subsector': df['Transaction Subsector'],
+                'Transaction Sector (PPI)': df['Transaction Sector (PPI)'],
+                'Transaction Subsector (PPI)': df['Transaction Subsector (PPI)'],
+                'Transaction Segment (PPI)': df['Transaction Segment (PPI)'],
+                'Commercial Bank Debt (USD m)': df['Commercial Bank Debt (USD m)'],
+                'Multilateral Involvement': None,
+                'Multilateral Debt (USD m)': None,
+                'Bilateral Involvement': None,
+                'Bilateral Debt (USD m)': None,
+                'Institutional Involvement': None,
+                'Institutional Debt (USD m)': None,
+                'Public Involvement': None,
+                'Public Debt (USD m)': None,
+                'International Involvement': None,
+                'International Debt (USD m)': None,
+                'Local Debt (USD m)': None,
+                'Type of PPI': None
+            }
+
+            # Add the new columns after the original columns in the correct order
+            for col, data in new_columns.items():
+                if col not in df.columns:
+                    df[col] = data
+
+            # Populate the 'Type of PPI' column based on the conditions
+            determine_type_of_ppi(df)
+
+            # Ensure the correct order of the new columns
+            df = df[original_columns + [
+                'Transaction Country (PPI)',
+                'Transaction Region (PPI)',
+                'IDA Status',
+                'Transaction Sector',
+                'Transaction Subsector',
+                'Transaction Sector (PPI)',
+                'Transaction Subsector (PPI)',
+                'Transaction Segment (PPI)',
+                'Commercial Bank Debt (USD m)',
+                'Multilateral Involvement',
+                'Multilateral Debt (USD m)',
+                'Bilateral Involvement',
+                'Bilateral Debt (USD m)',
+                'Institutional Involvement',
+                'Institutional Debt (USD m)',
+                'Public Involvement',
+                'Public Debt (USD m)',
+                'International Involvement',
+                'International Debt (USD m)',
+                'Local Debt (USD m)',
+                'Type of PPI'
+            ]]
+
+            sheet_data['Transactions_Infrastructure_GIH'] = df
+
+        # Processing 'Tranches' sheet
+        if 'Tranches' in sheet_data:
+            df = sheet_data['Tranches']
+            df['Transaction Country (PPI)'] = df['Transaction Country'].map(country_to_ppi)
+            df['Transaction Region (PPI)'] = df['Transaction Country'].map(country_to_region_ppi)
+            df['IDA Status'] = df['Transaction Country (PPI)'].map(country_to_ida_status)
+            
+            df['Transaction Sector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 0) if pd.notnull(x) else None)
+            df['Transaction Subsector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 1) if pd.notnull(x) else None)
+            df['Transaction Segment (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 2) if pd.notnull(x) else None)
+
+            df['Transaction Sector (PPI) Split'], df['Transaction Subsector (PPI) Split'], df['Transaction Segment (PPI) Split'] = zip(*df['Transaction Subsector'].map(apply_split_mappings))
+
+            sheet_data['Tranches'] = df
+
+        # Processing 'Tranche_Participants' sheet
+        if 'Tranche_Participants' in sheet_data:
+            df = sheet_data['Tranche_Participants']
+            df['Transaction Country (PPI)'] = df['Transaction Country'].map(country_to_ppi)
+            df['Transaction Region (PPI)'] = df['Transaction Country'].map(country_to_region_ppi)
+            df['IDA Status'] = df['Transaction Country (PPI)'].map(country_to_ida_status)
+
+            df['Transaction Sector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 0) if pd.notnull(x) else None)
+            df['Transaction Subsector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 1) if pd.notnull(x) else None)
+            df['Transaction Segment (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 2) if pd.notnull(x) else None)
+
+            sheet_data['Tranche_Participants'] = df
 
     # Get the current time in London, UK timezone
     london_tz = pytz.timezone('Europe/London')
@@ -820,6 +936,7 @@ def create_destination_file(source_path, start_time):
             autofit_columns(worksheet)  # Autofit columns for each sheet
 
     return destination_path
+
 
 
 # Streamlit app
