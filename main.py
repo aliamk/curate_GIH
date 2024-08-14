@@ -591,32 +591,32 @@ country_to_ida_status = {
 
 # PPI Mapping from PDF
 ppi_mapping = {
-    "Biofuels/Biomass Energy": ("Electricity", "Electricity generation", "Electricity generation"),
-    "Energy Storage": ("Electricity", "Energy Storage", "Energy Storage"),
-    "EV Charging": ("Transport", "E-Vehicle Charging Station", "E-Vehicle Charging Station"),
-    "Geothermal Energy": ("Electricity", "Electricity generation", "Electricity generation"),
-    "Hydro Energy": ("Electricity", "Electricity generation", "Electricity generation"),
-    "Hydrogen Energy": ("Electricity", "Electricity generation", "Electricity generation"),
-    "Marine Energy": ("Electricity", "Electricity generation", "Electricity generation"),
-    "Solar (Floating PV)": ("Electricity", "Electricity generation", "Electricity generation"),
-    "Solar (Land-Based PV)": ("Electricity", "Electricity generation", "Electricity generation"),
-    "Solar (Thermal)": ("Electricity", "Electricity generation", "Electricity generation"),
-    "Waste to Energy": ("Electricity", "Electricity generation", "Electricity generation"),
-    "Wind (Offshore)": ("Electricity", "Electricity generation", "Electricity generation"),
-    "Wind (Onshore)": ("Electricity", "Electricity generation", "Electricity generation"),
-    "Carbon Capture & Storage": ("Electricity", "Other", "Electricity generation"),
-    "Coal-Fired Power": ("Electricity", "Electricity generation", "Electricity generation"),
-    "Cogeneration Power": ("Electricity", "Electricity generation", "Electricity generation"),
-    "Gas-Fired Power": ("Electricity", "Electricity generation", "Electricity generation"),
-    "Nuclear Power": ("Electricity", "Electricity generation", "Electricity generation"),
-    "Oil-Fired Power": ("Electricity", "Electricity generation", "Electricity generation"),
-    "Transmission": ("Electricity", "Electricity transmission", "Electricity transmission"),
-    "Downstream Oil & Gas": ("Downstream", "-", "-"),
-    "LNG": ("LNG", "-", "-"),
-    "Midstream Oil & Gas": ("Midstream", "-", "-"),
-    "Petrochemical": ("Petrochemical", "-", "-"),
-    "Upstream Oil & Gas": ("Upstream", "-", "-"),
-    "Airport": ("Transport", "Airports Terminal", "Terminal"),
+    "Biofuels/Biomass": ("Energy", "Electricity", "Electricity generation"),
+    "Energy Storage": ("Energy", "Energy Storage", "Energy Storage"),
+    "EV Charging": ("Transport", "E-Vehicle Charging Station", ""),
+    "Geothermal": ("Energy", "Electricity", "Electricity generation"),
+    "Hydro": ("Energy", "Electricity", "Electricity generation"),
+    "Hydrogen": ("Energy", "Electricity", "Electricity generation"),
+    "Marine": ("Energy", "Electricity", "Electricity generation"),
+    "Solar (Floating PV)": ("Energy", "Electricity", "Electricity generation"),
+    "Solar (Land-Based PV)": ("Energy", "Electricity", "Electricity generation"),
+    "Solar (Thermal)": ("Energy", "Electricity", "Electricity generation"),
+    "Waste to Energy": ("Energy", "Electricity", "Electricity generation"),
+    "Wind (Offshore)": ("Energy", "Electricity", "Electricity generation"),
+    "Wind (Onshore)": ("Energy", "Electricity", "Electricity generation"),
+    "Carbon Capture & Storage": ("Energy", "Electricity", "Other"),
+    "Coal-Fired Power": ("Energy", "Electricity", "Electricity generation"),
+    "Cogeneration Power": ("Energy", "Electricity", "Electricity generation"),
+    "Gas-Fired Power": ("Energy", "Electricity", "Electricity generation"),
+    "Nuclear Power": ("Energy", "Electricity", "Electricity generation"),
+    "Oil-Fired Power": ("Energy", "Electricity", "Electricity generation"),
+    "Transmission": ("Energy", "Electricity", "Electricity transmission"),
+    "Downstream": ("Oil & Gas", "Downstream", "-"),
+    "LNG": ("Oil & Gas", "LNG", "-"),
+    "Midstream": ("Oil & Gas", "Midstream", "-"),
+    "Petrochemical": ("Oil & Gas", "Petrochemical", "-"),
+    "Upstream": ("Oil & Gas", "Upstream", "-"),
+    "Airport": ("Transport", "Airports", "Terminal"),
     "Bridge": ("Transport", "Roads", "Bridge"),
     "Car Park": ("Transport", "Roads", "Other"),
     "Heavy Rail": ("Transport", "Railways", "Freight"),
@@ -626,6 +626,7 @@ ppi_mapping = {
     "Rolling Stock": ("Transport", "Railways", "Other"),
     "Service Station": ("Transport", "Roads", "Other"),
     "Tunnel": ("Transport", "Roads", "Tunnel"),
+    "Waterway": ("Transport", "-", "-"),
     "Defence": ("Social Infrastructure", "Defence", "-"),
     "Education": ("Social Infrastructure", "Education", "-"),
     "Government Accommodation": ("Social Infrastructure", "Government Accommodation", "-"),
@@ -640,16 +641,16 @@ ppi_mapping = {
     "Internet": ("Information and communication technology (ICT)", "ICT backbone", "Not Available"),
     "Satellite": ("Information and communication technology (ICT)", "ICT backbone", "Other"),
     "Tower": ("Information and communication technology (ICT)", "ICT backbone", "Other"),
+    "-": ("Municipal Solid Waste", "-", "-"),
     "Desalination": ("Water and sewerage", "Treatment Plant", "Potable water treatment plant"),
     "Water Distribution": ("Water and sewerage", "Water Utility", "Not Available"),
     "Water Treatment": ("Water and sewerage", "Water Utility", "Water utility with sewerage"),
     "Base Metals": ("Mining", "Base Metals", "-"),
-    "Coal Mining": ("Mining", "Coal", "-"),
-    "Metal Mining": ("Mining", "Metal", "-"),
-    "Mineral Mining": ("Mining", "Mineral", "-"),
+    "Coal": ("Mining", "Coal", "-"),
+    "Metal": ("Mining", "Metal", "-"),
+    "Mineral": ("Mining", "Mineral", "-"),
     "Precious Metals": ("Mining", "Precious Metals", "-"),
     "Processing": ("Mining", "Processing", "-"),
-    # Add more mappings as necessary
 }
 
 # Split Mappings from PDF
@@ -728,9 +729,14 @@ def autofit_columns(worksheet):
 # Function to map and concatenate multiple values for PPI columns
 def map_and_concatenate_values(subsector_string, column_index):
     subsectors = subsector_string.split('; ')
-    mapped_values = [ppi_mapping.get(subsector, ("", "", ""))[column_index] for subsector in subsectors]
-    unique_mapped_values = list(set(mapped_values))  # Remove duplicates
-    return "; ".join(filter(None, unique_mapped_values))
+    mapped_values = []
+    for subsector in subsectors:
+        if subsector in ppi_mapping:
+            mapped_value = ppi_mapping[subsector][column_index]
+            if mapped_value != "-":
+                mapped_values.append(mapped_value)
+        # else part can be omitted if we want to ignore unmapped subsectors
+    return "; ".join(mapped_values)  # This will only join non-empty values
 
 # Function to apply split mappings
 def apply_split_mappings(subsector_string):
@@ -739,33 +745,30 @@ def apply_split_mappings(subsector_string):
     subsectors = subsector_string.split('; ')
     sectors, subsectors_ppi, segments = [], [], []
     for subsector in subsectors:
-        sector, subsector_ppi, segment = split_mapping.get(subsector, ("", "", ""))
-        sectors.append(sector)
-        subsectors_ppi.append(subsector_ppi)
-        segments.append(segment)
+        if subsector in split_mapping:
+            sector, subsector_ppi, segment = split_mapping[subsector]
+            if sector != "-": sectors.append(sector)
+            if subsector_ppi != "-": subsectors_ppi.append(subsector_ppi)
+            if segment != "-": segments.append(segment)
+        # else parts can be omitted if we want to ignore unmapped subsectors
     return (
-        "; ".join(filter(None, sectors)),
-        "; ".join(filter(None, subsectors_ppi)),
-        "; ".join(filter(None, segments)),
+        "; ".join(sectors),
+        "; ".join(subsectors_ppi),
+        "; ".join(segments),
     )
 
 # Function to process the uploaded file and generate the output file
 def create_destination_file(source_path, start_time):
-    # Load the Excel file into a Pandas ExcelFile object
     with pd.ExcelFile(source_path) as xls:
-        # Initialize a dictionary to hold the data for each sheet
         sheet_data = {}
 
-        # Loop through each sheet
         for sheet_name in xls.sheet_names:
-            # Read the sheet into a DataFrame
             df = pd.read_excel(xls, sheet_name=sheet_name)
 
             if sheet_name == 'Transactions_Infrastructure_GIH':
-                # Add new columns in the specified order
                 df['Transaction Country (PPI)'] = df['Transaction Country'].map(country_to_ppi)
                 df['Transaction Region (PPI)'] = df['Transaction Country'].map(country_to_region_ppi)
-                df['IDA Status'] = df['Transaction Country (PPI)'].map(country_to_ida_status)
+                df['IDA Status'] = df['Transaction Country'].map(country_to_ida_status)
 
                 tranches_df = pd.read_excel(xls, sheet_name='Tranches')
                 if not tranches_df['Realfin INFRA Transaction ID'].is_unique:
@@ -780,28 +783,25 @@ def create_destination_file(source_path, start_time):
                 df['Transaction Segment (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 2) if pd.notnull(x) else None)
 
             elif sheet_name == 'Tranches':
-                # Add new columns in the specified order
                 df['Transaction Country (PPI)'] = df['Transaction Country'].map(country_to_ppi)
                 df['Transaction Region (PPI)'] = df['Transaction Country'].map(country_to_region_ppi)
                 df['IDA Status'] = df['Transaction Country (PPI)'].map(country_to_ida_status)
                 
-                df['Transaction Subsector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 1) if pd.notnull(x) else None)
                 df['Transaction Sector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 0) if pd.notnull(x) else None)
+                df['Transaction Subsector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 1) if pd.notnull(x) else None)
                 df['Transaction Segment (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 2) if pd.notnull(x) else None)
 
                 df['Transaction Sector (PPI) Split'], df['Transaction Subsector (PPI) Split'], df['Transaction Segment (PPI) Split'] = zip(*df['Transaction Subsector'].map(apply_split_mappings))
 
             elif sheet_name == 'Tranche_Participants':
-                # Add new columns in the specified order
                 df['Transaction Country (PPI)'] = df['Transaction Country'].map(country_to_ppi)
                 df['Transaction Region (PPI)'] = df['Transaction Country'].map(country_to_region_ppi)
                 df['IDA Status'] = df['Transaction Country (PPI)'].map(country_to_ida_status)
 
-                df['Transaction Subsector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 1) if pd.notnull(x) else None)
                 df['Transaction Sector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 0) if pd.notnull(x) else None)
+                df['Transaction Subsector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 1) if pd.notnull(x) else None)
                 df['Transaction Segment (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 2) if pd.notnull(x) else None)
 
-            # Save the modified or unmodified DataFrame back to the dictionary
             sheet_data[sheet_name] = df
 
     # Get the current time in London, UK timezone
@@ -820,6 +820,7 @@ def create_destination_file(source_path, start_time):
             autofit_columns(worksheet)  # Autofit columns for each sheet
 
     return destination_path
+
 
 # Streamlit app
 st.title('Curating GIH')
