@@ -760,28 +760,44 @@ def apply_split_mappings(subsector_string):
 
 # Function to determine 'Type of PPI' based on 'Transaction Type'
 def determine_type_of_ppi(df):
-    conditions = [
-        (r'(Acquisition|Asset Acquisition|Corporate Acquisition|Refinancing|Securitisation)', 'Secondary'),
-        (r'Privatisation', 'Divestiture'),
-        (r'(brownfield|modernization|modernisation|expansion|expand|upgrade|upgrading|refurbishment|refurb|rehabilitation|reconstruction|renewal|renew|improvement|extension|renovation|replacement|revamping|revamp|redevelopment|enhancement|revitalization|rebuilding|restoration|refreshment|enhancing|enhancement|repair|renewal)', 'Brownfield'),
-        (r'(Design-Build|Portfolio Financing|Primary Financing)', 'Greenfield')
-    ]
+    # Initialize the 'Type of PPI' column with None
+    df['Type of PPI'] = None
 
+    # Define regex patterns for categorizations
+    secondary_transaction_type_patterns = r'(?i)\b(Acquisition|Asset Acquisition|Corporate Acquisition|Refinancing|Securitisation)\b'
+    divestiture_patterns = r'(?i)\bPrivatisation\b'
+    brownfield_patterns = r'(?i)\b(brownfield|moderni[sz]ation|expansion|expand|upgrade|upgrading|refurb(?:ishment)?|rehabilitation|reconstruction|renew(?:al)?|improvement|extension|renovation|replacement|revamp(?:ing)?|redevelopment|enhance(?:ment)?|revitali[sz]ation|rebuilding|restoration|refreshment|enhancing|repair)\b'
+    greenfield_patterns = r'(?i)\b(Design-Build|Portfolio Financing|Primary Financing)\b'
+
+    # Step 1: Check for Secondary type in 'Transaction Type'
     for index, row in df.iterrows():
-        transaction_type = str(row['Transaction Type'])  # Convert to string to avoid NoneType errors
+        transaction_type = str(row['Transaction Type'])
 
-        # Check each condition in the specified order
-        for pattern, ppi_type in conditions[:-1]:
-            if re.search(pattern, transaction_type, re.IGNORECASE):
-                df.at[index, 'Type of PPI'] = ppi_type
-                break
+        if re.search(secondary_transaction_type_patterns, transaction_type):
+            df.at[index, 'Type of PPI'] = 'Secondary'
 
-        # Apply the final condition only if 'Type of PPI' is still empty
+    # Step 2: Check for Divestiture type in 'Transaction Type'
+    for index, row in df.iterrows():
+        transaction_type = str(row['Transaction Type'])
+
+        if re.search(divestiture_patterns, transaction_type):
+            df.at[index, 'Type of PPI'] = 'Divestiture'
+
+    # Step 3: Check for Brownfield type in 'Transaction'
+    for index, row in df.iterrows():
+        transaction = str(row['Transaction'])
+
+        if re.search(brownfield_patterns, transaction):
+            df.at[index, 'Type of PPI'] = 'Brownfield'
+
+    # Step 4: Check for Greenfield type if 'Type of PPI' is still None
+    for index, row in df.iterrows():
         if pd.isnull(row['Type of PPI']):
-            if re.search(conditions[-1][0], transaction_type, re.IGNORECASE):
-                df.at[index, 'Type of PPI'] = conditions[-1][1]
+            transaction_type = str(row['Transaction Type'])
+            if re.search(greenfield_patterns, transaction_type):
+                df.at[index, 'Type of PPI'] = 'Greenfield'
 
-
+    return df
 
 # Function to process the uploaded file and generate the output file
 def create_destination_file(source_path, start_time):
@@ -842,6 +858,9 @@ def create_destination_file(source_path, start_time):
             df['Transaction Subsector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 1) if pd.notnull(x) else None)
             df['Transaction Segment (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 2) if pd.notnull(x) else None)
 
+            # Call the determine_type_of_ppi function to populate 'Type of PPI'
+            df = determine_type_of_ppi(df)
+
             # Populate 'Commercial Bank Debt (USD m)' from 'Tranche_Participants' sheet
             if 'Tranche_Participants' in sheet_data:
                 tranche_participants_df = sheet_data['Tranche_Participants']
@@ -852,25 +871,7 @@ def create_destination_file(source_path, start_time):
                 )
                 df['Commercial Bank Debt (USD m)'] = df['Realfin INFRA Transaction ID'].map(commercial_bank_debt)
 
-            # Populate the 'Type of PPI' column based on the conditions
-            conditions = [
-                (r'(Acquisition|Asset Acquisition|Corporate Acquisition|Refinancing|Securitisation)', 'Secondary'),
-                (r'Privatisation', 'Divestiture'),
-                (r'(brownfield|modernization|modernisation|expand|upgrade|upgrading|refurbishment|refurb|rehabilitation|reconstruction|renewal|renew|improvement|extension|renovation|replacement|revamping|revamp|redevelopment|enhancement|revitalization|rebuilding|restoration|refreshment|enhancing|enhancement|repair|renewal)', 'Brownfield'),
-                (r'(Design-Build|Portfolio Financing|Primary Financing)', 'Greenfield')
-            ]
-
-            for index, row in df.iterrows():
-                transaction_type = str(row['Transaction Type'])  # Convert to string to avoid NoneType errors
-
-                # Check each condition in the specified order
-                for pattern, ppi_type in conditions:
-                    if re.search(pattern, transaction_type, re.IGNORECASE):
-                        df.at[index, 'Type of PPI'] = ppi_type
-                        break
-
-            # Functionality 1: Populate 'Multilateral Debt (USD m)'
-            if 'Tranche_Participants' in sheet_data:
+                # Functionality 1: Populate 'Multilateral Debt (USD m)'
                 multilateral_debt = (
                     tranche_participants_df[tranche_participants_df['Participant Company Type'] == 'Multilateral']
                     .groupby('Realfin INFRA Transaction ID')['Participant Tranche Underwriting (USD m)']
@@ -878,81 +879,81 @@ def create_destination_file(source_path, start_time):
                 )
                 df['Multilateral Debt (USD m)'] = df['Realfin INFRA Transaction ID'].map(multilateral_debt)
 
-            # Functionality 2: Populate 'Multilateral Involvement'
-            multilateral_involvement = (
-                tranche_participants_df.groupby('Realfin INFRA Transaction ID')['Participant Company Type']
-                .apply(lambda x: 'Yes' if 'Multilateral' in x.values else 'No')
-            )
-            df['Multilateral Involvement'] = df['Realfin INFRA Transaction ID'].map(multilateral_involvement).fillna('No')
-
-            # Functionality 3: Populate 'Bilateral Involvement'
-            bilateral_conditions = tranche_participants_df['Participant Company Type'].isin(['Development Bank', 'Export Credit Agency'])
-            bilateral_involvement = (
-                tranche_participants_df[bilateral_conditions]
-                .groupby('Realfin INFRA Transaction ID')['Participant Company Type']
-                .apply(lambda x: 'Yes' if not x.empty else 'No')
-            )
-            df['Bilateral Involvement'] = df['Realfin INFRA Transaction ID'].map(bilateral_involvement).fillna('No')
-
-            # Functionality 4: Populate 'Bilateral Debt (USD m)'
-            bilateral_debt = (
-                tranche_participants_df[bilateral_conditions]
-                .groupby('Realfin INFRA Transaction ID')['Participant Tranche Underwriting (USD m)']
-                .sum()
-            )
-            df['Bilateral Debt (USD m)'] = df['Realfin INFRA Transaction ID'].map(bilateral_debt)
-
-            # Functionality 5: Populate 'Institutional Involvement'
-            institutional_conditions = tranche_participants_df['Participant Company Type'].isin([
-                "Pension Fund (Public)", "Pension Fund (Private)", "Superannuation Fund",
-                "Insurance Company", "Insurance Company (Life)", "Insurance (Non-Life)",
-                "Sovereign Wealth Fund", "Endowment", "Foundation", "Institutional - Other",
-                "Fund Manager", "Asset Manager", "Private Equity", "Fund"
-            ])
-            institutional_involvement = (
-                tranche_participants_df[institutional_conditions]
-                .groupby('Realfin INFRA Transaction ID')['Participant Company Type']
-                .apply(lambda x: 'Yes' if not x.empty else 'No')
-            )
-            df['Institutional Involvement'] = df['Realfin INFRA Transaction ID'].map(institutional_involvement).fillna('No')
-
-            # Functionality 6: Populate 'Institutional Debt (USD m)'
-            institutional_debt = (
-                tranche_participants_df[institutional_conditions]
-                .groupby('Realfin INFRA Transaction ID')['Participant Tranche Underwriting (USD m)']
-                .sum()
-            )
-            df['Institutional Debt (USD m)'] = df['Realfin INFRA Transaction ID'].map(institutional_debt)
-
-            # Functionality 7: Populate 'Public Involvement'
-            public_conditions = tranche_participants_df['Participant Company Type'].isin([
-                "State Bank", "State-Owned Enterprise", "Government (Local)", "Government (National)"
-            ])
-            public_involvement = (
-                tranche_participants_df[public_conditions]
-                .groupby('Realfin INFRA Transaction ID')['Participant Company Type']
-                .apply(lambda x: 'Yes' if not x.empty else 'No')
-            )
-            df['Public Involvement'] = df['Realfin INFRA Transaction ID'].map(public_involvement).fillna('No')
-
-            # Functionality 8: Populate 'Public Debt (USD m)'
-            public_debt = (
-                tranche_participants_df[public_conditions]
-                .groupby('Realfin INFRA Transaction ID')['Participant Tranche Underwriting (USD m)']
-                .sum()
-            )
-            df['Public Debt (USD m)'] = df['Realfin INFRA Transaction ID'].map(public_debt)
-
-            # Functionality 9: Populate 'International Involvement'
-            international_involvement = (
-                tranche_participants_df.apply(
-                    lambda row: 'No' if row['Participant Domicile(Country)'] == row['Transaction Country'] else 'Yes',
-                    axis=1
+                # Functionality 2: Populate 'Multilateral Involvement'
+                multilateral_involvement = (
+                    tranche_participants_df.groupby('Realfin INFRA Transaction ID')['Participant Company Type']
+                    .apply(lambda x: 'Yes' if 'Multilateral' in x.values else 'No')
                 )
-                .groupby(tranche_participants_df['Realfin INFRA Transaction ID'])
-                .first()
-            )
-            df['International Involvement'] = df['Realfin INFRA Transaction ID'].map(international_involvement)
+                df['Multilateral Involvement'] = df['Realfin INFRA Transaction ID'].map(multilateral_involvement).fillna('No')
+
+                # Functionality 3: Populate 'Bilateral Involvement'
+                bilateral_conditions = tranche_participants_df['Participant Company Type'].isin(['Development Bank', 'Export Credit Agency'])
+                bilateral_involvement = (
+                    tranche_participants_df[bilateral_conditions]
+                    .groupby('Realfin INFRA Transaction ID')['Participant Company Type']
+                    .apply(lambda x: 'Yes' if not x.empty else 'No')
+                )
+                df['Bilateral Involvement'] = df['Realfin INFRA Transaction ID'].map(bilateral_involvement).fillna('No')
+
+                # Functionality 4: Populate 'Bilateral Debt (USD m)'
+                bilateral_debt = (
+                    tranche_participants_df[bilateral_conditions]
+                    .groupby('Realfin INFRA Transaction ID')['Participant Tranche Underwriting (USD m)']
+                    .sum()
+                )
+                df['Bilateral Debt (USD m)'] = df['Realfin INFRA Transaction ID'].map(bilateral_debt)
+
+                # Functionality 5: Populate 'Institutional Involvement'
+                institutional_conditions = tranche_participants_df['Participant Company Type'].isin([
+                    "Pension Fund (Public)", "Pension Fund (Private)", "Superannuation Fund",
+                    "Insurance Company", "Insurance Company (Life)", "Insurance (Non-Life)",
+                    "Sovereign Wealth Fund", "Endowment", "Foundation", "Institutional - Other",
+                    "Fund Manager", "Asset Manager", "Private Equity", "Fund"
+                ])
+                institutional_involvement = (
+                    tranche_participants_df[institutional_conditions]
+                    .groupby('Realfin INFRA Transaction ID')['Participant Company Type']
+                    .apply(lambda x: 'Yes' if not x.empty else 'No')
+                )
+                df['Institutional Involvement'] = df['Realfin INFRA Transaction ID'].map(institutional_involvement).fillna('No')
+
+                # Functionality 6: Populate 'Institutional Debt (USD m)'
+                institutional_debt = (
+                    tranche_participants_df[institutional_conditions]
+                    .groupby('Realfin INFRA Transaction ID')['Participant Tranche Underwriting (USD m)']
+                    .sum()
+                )
+                df['Institutional Debt (USD m)'] = df['Realfin INFRA Transaction ID'].map(institutional_debt)
+
+                # Functionality 7: Populate 'Public Involvement'
+                public_conditions = tranche_participants_df['Participant Company Type'].isin([
+                    "State Bank", "State-Owned Enterprise", "Government (Local)", "Government (National)"
+                ])
+                public_involvement = (
+                    tranche_participants_df[public_conditions]
+                    .groupby('Realfin INFRA Transaction ID')['Participant Company Type']
+                    .apply(lambda x: 'Yes' if not x.empty else 'No')
+                )
+                df['Public Involvement'] = df['Realfin INFRA Transaction ID'].map(public_involvement).fillna('No')
+
+                # Functionality 8: Populate 'Public Debt (USD m)'
+                public_debt = (
+                    tranche_participants_df[public_conditions]
+                    .groupby('Realfin INFRA Transaction ID')['Participant Tranche Underwriting (USD m)']
+                    .sum()
+                )
+                df['Public Debt (USD m)'] = df['Realfin INFRA Transaction ID'].map(public_debt)
+
+                # Functionality 9: Populate 'International Involvement'
+                international_involvement = (
+                    tranche_participants_df.apply(
+                        lambda row: 'No' if row['Participant Domicile(Country)'] == row['Transaction Country'] else 'Yes',
+                        axis=1
+                    )
+                    .groupby(tranche_participants_df['Realfin INFRA Transaction ID'])
+                    .first()
+                )
+                df['International Involvement'] = df['Realfin INFRA Transaction ID'].map(international_involvement)
 
             # Ensure the correct order of the new columns
             df = df[original_columns + new_columns]
@@ -964,7 +965,7 @@ def create_destination_file(source_path, start_time):
             df = sheet_data['Tranches']
             df['Transaction Country (PPI)'] = df['Transaction Country'].map(country_to_ppi)
             df['Transaction Region (PPI)'] = df['Transaction Country'].map(country_to_region_ppi)
-            df['IDA Status'] = df['Transaction Country (PPI)'].map(country_to_ida_status)
+            df['IDA Status'] = df['Transaction Country'].map(country_to_ida_status)
             
             df['Transaction Sector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 0) if pd.notnull(x) else None)
             df['Transaction Subsector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 1) if pd.notnull(x) else None)
@@ -979,7 +980,7 @@ def create_destination_file(source_path, start_time):
             df = sheet_data['Tranche_Participants']
             df['Transaction Country (PPI)'] = df['Transaction Country'].map(country_to_ppi)
             df['Transaction Region (PPI)'] = df['Transaction Country'].map(country_to_region_ppi)
-            df['IDA Status'] = df['Transaction Country (PPI)'].map(country_to_ida_status)
+            df['IDA Status'] = df['Transaction Country'].map(country_to_ida_status)
 
             df['Transaction Sector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 0) if pd.notnull(x) else None)
             df['Transaction Subsector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 1) if pd.notnull(x) else None)
@@ -1003,7 +1004,6 @@ def create_destination_file(source_path, start_time):
             autofit_columns(worksheet)  # Autofit columns for each sheet
 
     return destination_path
-
 
 # Streamlit app
 st.title('Curating GIH')
