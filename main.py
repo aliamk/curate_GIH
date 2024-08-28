@@ -768,6 +768,7 @@ def determine_type_of_ppi(df):
     divestiture_patterns = r'(?i)\bPrivatisation\b'
     brownfield_patterns = r'(?i)\b(brownfield|moderni[sz]ation|expansion|expand|upgrade|upgrading|refurb(?:ishment)?|rehabilitation|reconstruction|renew(?:al)?|improvement|extension|renovation|replacement|revamp(?:ing)?|redevelopment|enhance(?:ment)?|revitali[sz]ation|rebuilding|restoration|refreshment|enhancing|repair)\b'
     greenfield_patterns = r'(?i)\b(Design-Build|Portfolio Financing|Primary Financing)\b'
+    additional_financing = r'(?i)\b(Additional Financing)\b'
 
     # Step 1: Check for Secondary type in 'Transaction Type'
     for index, row in df.iterrows():
@@ -796,6 +797,13 @@ def determine_type_of_ppi(df):
             transaction_type = str(row['Transaction Type'])
             if re.search(greenfield_patterns, transaction_type):
                 df.at[index, 'Type of PPI'] = 'Greenfield'
+
+    # Step 5: Check for Additional Financing type if 'Type of PPI' is 'Additional Financing'
+    for index, row in df.iterrows():
+        transaction_type = str(row['Transaction Type'])
+
+        if re.search(additional_financing, transaction_type):
+            df.at[index, 'Type of PPI'] = 'Additional Financing'
 
     return df
 
