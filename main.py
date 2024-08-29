@@ -739,10 +739,38 @@ def map_and_concatenate_values(subsector_string, column_index):
         # else part can be omitted if we want to ignore unmapped subsectors
     return "; ".join(mapped_values)  # This will only join non-empty values
 
+def map_technology(subsector_string):
+    technology_mapping = {
+        "Coal-Fired Power": "Coal",
+        "Oil-Fired Power": "Diesel",
+        "Gas-Fired Power": "Natural Gas",
+        "Geothermal": "Geothermal",
+        "Nuclear Power": "Nuclear",
+        "Cogeneration Power": "Steam",
+        "Hydrogen": "Hydrogen",
+        "Waste to Energy": "Waste",
+        "Solar (Floating PV)": "Solar, PV",
+        "Solar (Land-Based PV)": "Solar, PV",
+        "Wind (Onshore)": "Wind, onshore",
+        "Wind (Offshore)": "Wind, offshore",
+        "Solar (Thermal)": "Solar, CSP",
+        "Energy Storage": "Batteries",
+        "Biofuels/Biomass": "Biomass",
+        "Marine": "Tidal"
+    }
+
+    if pd.isnull(subsector_string):
+        return None
+    
+    subsectors = subsector_string.split('; ')
+    technologies = [technology_mapping[subsector] for subsector in subsectors if subsector in technology_mapping]
+    return '; '.join(technologies)
+
 # Function to apply split mappings
 def apply_split_mappings(subsector_string):
     if pd.isnull(subsector_string):
         return None, None, None
+    
     subsectors = subsector_string.split('; ')
     sectors, subsectors_ppi, segments = [], [], []
     for subsector in subsectors:
@@ -757,6 +785,12 @@ def apply_split_mappings(subsector_string):
         "; ".join(subsectors_ppi),
         "; ".join(segments),
     )
+
+def remove_repetitions(cell_value):
+    if pd.isnull(cell_value):
+        return cell_value
+    unique_values = list(dict.fromkeys(cell_value.split('; ')))
+    return '; '.join(unique_values)
 
 # Function to determine 'Type of PPI' based on 'Transaction Type'
 def determine_type_of_ppi(df):
@@ -834,7 +868,7 @@ def create_destination_file(source_path, start_time):
                 'Institutional Involvement', 'Institutional Debt (USD m)',
                 'Public Involvement', 'Public Debt (USD m)',
                 'International Involvement', 'International Debt (USD m)', 'Local Debt (USD m)',
-                'Type of PPI'
+                'Type of PPI', 'Technology (PPI)'
             ]
 
             for col in new_columns:
@@ -866,12 +900,18 @@ def create_destination_file(source_path, start_time):
             df['Transaction Subsector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 1) if pd.notnull(x) else None)
             df['Transaction Segment (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 2) if pd.notnull(x) else None)
 
+            # Populate the 'Technology (PPI)' column using the 'Transaction Subsector' column
+            df['Technology (PPI)'] = df['Transaction Subsector'].apply(map_technology)
+
             # Call the determine_type_of_ppi function to populate 'Type of PPI'
             df = determine_type_of_ppi(df)
 
             # Populate 'Commercial Bank Debt (USD m)' from 'Tranche_Participants' sheet
             if 'Tranche_Participants' in sheet_data:
                 tranche_participants_df = sheet_data['Tranche_Participants']
+                # Ensure 'Transaction Country (PPI)' is present in 'Tranche_Participants' dataframe
+                tranche_participants_df['Transaction Country (PPI)'] = tranche_participants_df['Transaction Country'].map(country_to_ppi)
+
                 commercial_bank_debt = (
                     tranche_participants_df[tranche_participants_df['Participant Company Type'] == 'Commercial Bank']
                     .groupby('Realfin INFRA Transaction ID')['Participant Tranche Underwriting (USD m)']
@@ -963,12 +1003,61 @@ def create_destination_file(source_path, start_time):
                 )
                 df['International Involvement'] = df['Realfin INFRA Transaction ID'].map(international_involvement)
 
+                 # Calculate 'International Debt (USD m)'
+                international_debt_rows = tranche_participants_df[
+                    (tranche_participants_df['Tranche Primary Type'] == 'Debt') &
+                    (tranche_participants_df['Participant Domicile(Country)'] != tranche_participants_df['Transaction Country (PPI)'])
+                ]
+                international_debt_sums = international_debt_rows.groupby('Realfin INFRA Transaction ID')['Participant Tranche Underwriting (USD m)'].sum()
+                df['International Debt (USD m)'] = df['Realfin INFRA Transaction ID'].map(international_debt_sums).fillna(0)
+
+                # Calculate 'Local Debt (USD m)'
+                local_debt_rows = tranche_participants_df[
+                    (tranche_participants_df['Tranche Primary Type'] == 'Debt') &
+                    (tranche_participants_df['Participant Domicile(Country)'] == tranche_participants_df['Transaction Country (PPI)'])
+                ]
+                local_debt_sums = local_debt_rows.groupby('Realfin INFRA Transaction ID')['Participant Tranche Underwriting (USD m)'].sum()
+                df['Local Debt (USD m)'] = df['Realfin INFRA Transaction ID'].map(local_debt_sums).fillna(0)
+
             # Ensure the correct order of the new columns
             df = df[original_columns + new_columns]
+
+            # Columns to clean in this sheet
+            columns_to_clean = ['Transaction Sector (PPI)', 'Transaction Subsector (PPI)', 'Transaction Segment (PPI)']
+
+            for col in columns_to_clean:
+                df[col] = df[col].apply(remove_repetitions)
+            
 
             sheet_data['Transactions_Infrastructure_GIH'] = df
 
         # Processing 'Tranches' sheet
+        # Function to determine Institution Type (PPI) based on Participant Company Type
+        def determine_institution_type(participant_type):
+            if participant_type in ['Development Bank', 'Export Credit Agency']:
+                return 'Bilateral'
+            elif participant_type in [
+                'Commercial Bank', 'General Corporate', 'General Corporate (Investor)',
+                'Infrastructure Company', 'Infrastructure Company (Investor)',
+                'Operation & Maintenance', 'Real Estate Company', 'REIT'
+            ]:
+                return 'Commercial'
+            elif participant_type in [
+                'Asset Manager', 'Endowment', 'Family Office (Multi)', 'Family Office (Single)',
+                'Foundation', 'Fund', 'Fund Manager', 'Institutional - Other', 'Insurance Company',
+                'Insurance Company (Life)', 'Insurance Company (Non-Life)', 'Pension Fund (Private)',
+                'Pension Fund (Public)', 'Private Debt Company', 'Private Equity', 'Sovereign Wealth Fund',
+                'Superannuation Fund', 'Wealth Manager'
+            ]:
+                return 'Institutional'
+            elif participant_type == 'Multilateral':
+                return 'Multilateral'
+            elif participant_type in [
+                'Government (Local)', 'Government (National)', 'State Bank', 'State-Owned Enterprise'
+            ]:
+                return 'Public'         
+                
+    
         if 'Tranches' in sheet_data:
             df = sheet_data['Tranches']
             df['Transaction Country (PPI)'] = df['Transaction Country'].map(country_to_ppi)
@@ -980,6 +1069,15 @@ def create_destination_file(source_path, start_time):
             df['Transaction Segment (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 2) if pd.notnull(x) else None)
 
             df['Transaction Sector (PPI) Split'], df['Transaction Subsector (PPI) Split'], df['Transaction Segment (PPI) Split'] = zip(*df['Transaction Subsector'].map(apply_split_mappings))
+
+            # Columns to clean in this sheet
+            columns_to_clean = [
+                'Transaction Sector (PPI)', 'Transaction Subsector (PPI)', 'Transaction Segment (PPI)',
+                'Transaction Sector (PPI) Split', 'Transaction Subsector (PPI) Split', 'Transaction Segment (PPI) Split'
+            ]
+
+            for col in columns_to_clean:
+                df[col] = df[col].apply(remove_repetitions)
 
             sheet_data['Tranches'] = df
 
@@ -993,6 +1091,13 @@ def create_destination_file(source_path, start_time):
             df['Transaction Sector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 0) if pd.notnull(x) else None)
             df['Transaction Subsector (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 1) if pd.notnull(x) else None)
             df['Transaction Segment (PPI)'] = df['Transaction Subsector'].apply(lambda x: map_and_concatenate_values(x, 2) if pd.notnull(x) else None)
+            df['Institution Type (PPI)'] = df['Participant Company Type'].apply(determine_institution_type)
+
+            # Columns to clean in this sheet
+            columns_to_clean = ['Transaction Sector (PPI)', 'Transaction Subsector (PPI)', 'Transaction Segment (PPI)']
+
+            for col in columns_to_clean:
+                df[col] = df[col].apply(remove_repetitions)
 
             sheet_data['Tranche_Participants'] = df
 
